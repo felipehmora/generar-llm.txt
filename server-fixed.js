@@ -4,6 +4,7 @@ const cors = require("cors");
 const axios = require("axios");
 const rateLimit = require("express-rate-limit");
 const helmet = require("helmet");
+const cheerio = require("cheerio"); // Agrega esta línea junto a los otros require
 require("dotenv").config();
 
 const app = express();
@@ -47,12 +48,19 @@ function isValidUrl(string) {
 }
 
 // Prompt optimizado para OpenAI
-function createPrompt(url) {
+function createPrompt(url, scraped = {}) {
   return `Actúa como un experto en SEO y análisis web. Tu tarea es analizar la siguiente URL y generar un archivo LLM.txt completo y estructurado.
 
 URL a analizar: ${url}
 
-IMPORTANTE: Aunque no puedo acceder directamente a URLs, basándome en la URL proporcionada y en las mejores prácticas de SEO, genera un archivo LLM.txt que incluya:
+--- DATOS REALES EXTRAÍDOS ---
+Título: ${scraped.title || "No encontrado"}
+Descripción: ${scraped.description || "No encontrada"}
+H1: ${scraped.h1 || "No encontrado"}
+H2: ${scraped.h2 || "No encontrados"}
+------------------------------
+
+IMPORTANTE: Usa estos datos reales para mejorar el análisis y las recomendaciones. Si falta información, infiere lo necesario.
 
 # LLM.txt - [Título inferido de la URL]
 
@@ -142,6 +150,32 @@ Para completar este LLM.txt con información real del sitio, incluir:
 **Nota:** Para un análisis más preciso, se recomienda inspeccionar manualmente el contenido real del sitio web.`;
 }
 
+// Scraping básico de la página
+async function scrapePage(url) {
+  try {
+    const { data: html } = await axios.get(url, { timeout: 15000 });
+    const $ = cheerio.load(html);
+
+    const title = $("title").text().trim();
+    const description = $('meta[name="description"]').attr("content") || "";
+    const h1 = $("h1").first().text().trim();
+    const h2 = $("h2")
+      .map((i, el) => $(el).text().trim())
+      .get()
+      .join(" | ");
+
+    return {
+      title,
+      description,
+      h1,
+      h2,
+    };
+  } catch (error) {
+    console.warn("No se pudo scrapear la página:", error.message);
+    return {};
+  }
+}
+
 // Middleware de logging
 app.use("/api/", (req, res, next) => {
   console.log(
@@ -191,6 +225,10 @@ app.post("/api/generate-llm", async (req, res) => {
     const cleanUrl = url.trim();
     console.log(`Iniciando generación de LLM.txt para: ${cleanUrl}`);
 
+    // Scraping antes de generar el prompt
+    const scraped = await scrapePage(cleanUrl);
+    console.log("Datos scrapeados:", scraped);
+
     // Configuración para la llamada a OpenAI
     const openaiConfig = {
       model: process.env.OPENAI_MODEL || "gpt-4",
@@ -202,7 +240,7 @@ app.post("/api/generate-llm", async (req, res) => {
         },
         {
           role: "user",
-          content: createPrompt(cleanUrl),
+          content: createPrompt(cleanUrl, scraped), // <-- Aquí pasamos los datos scrapeados
         },
       ],
       max_tokens: parseInt(process.env.MAX_TOKENS) || 3000,
