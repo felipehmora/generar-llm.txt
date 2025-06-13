@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generador LLM.txt con IA - Cliente</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            padding: 40px;
+            max-width: 800px;
+            width: 100%;
+            margin: 0 auto;
+            position: relative;
+            overflow: hidden;
+        }
+        .container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #667eea, #764ba2, #f093fb);
+        }
+        h1 {
+            color: #2d3748;
+            margin-bottom: 10px;
+            font-size: 2.5rem;
+            font-weight: 700;
+            text-align: center;
+        }
+        .subtitle {
+            color: #718096;
+            text-align: center;
+            margin-bottom: 40px;
+            font-size: 1.1rem;
+        }
+        .server-status {
+            background: #f0fff4;
+            border: 1px solid #9ae6b4;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 30px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .server-status.error {
+            background: #fff5f5;
+            border-color: #fed7d7;
+        }
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #48bb78;
+        }
+        .status-indicator.error {
+            background: #e53e3e;
+        }
+        .steps {
+            background: #f7fafc;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 30px;
+            border-left: 4px solid #667eea;
+        }
+        .steps h3 {
+            color: #2d3748;
+            margin-bottom: 15px;
+        }
+        .steps ol {
+            color: #4a5568;
+            padding-left: 20px;
+            line-height: 1.6;
+        }
+        .input-group {
+            margin-bottom: 25px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #4a5568;
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+        input[type="url"] {
+            width: 100%;
+            padding: 15px 20px;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            background: #f7fafc;
+        }
+        input[type="url"]:focus {
+            outline: none;
+            border-color: #667eea;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        .btn-container {
+            text-align: center;
+            margin: 30px 0;
+        }
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 5px;
+        }
+        .btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+        .btn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .btn-download {
+            background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+        }
+        .btn-copy {
+            background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%);
+        }
+        .loading {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            margin: 30px 0;
+            color: #667eea;
+            font-size: 16px;
+        }
+        .spinner {
+            width: 24px;
+            height: 24px;
+            border: 3px solid #e2e8f0;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .result {
+            display: none;
+            margin-top: 40px;
+            padding-top: 30px;
+            border-top: 2px solid #e2e8f0;
+        }
+        .result h3 {
+            color: #2d3748;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+        }
+        .result textarea {
+            width: 100%;
+            min-height: 500px;
+            padding: 20px;
+            border: 2px solid #48bb78;
+            border-radius: 12px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            background: white;
+            resize: vertical;
+        }
+        .message {
+            padding: 15px;
+            border-radius: 12px;
+            margin-top: 20px;
+            display: none;
+        }
+        .error {
+            background: #fed7d7;
+            color: #c53030;
+        }
+        .success {
+            background: #c6f6d5;
+            color: #22543d;
+        }
+        .info {
+            background: #ebf8ff;
+            color: #2b6cb0;
+        }
+        .stats {
+            background: #f7fafc;
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 15px;
+            font-size: 14px;
+            color: #4a5568;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 Generador LLM.txt con IA</h1>
+        <p class="subtitle">Herramienta SEO que usa OpenAI para analizar páginas web (Versión Cliente-Servidor)</p>
+        
+        <div class="server-status" id="serverStatus">
+            <div class="status-indicator" id="statusIndicator"></div>
+            <span id="statusText">Verificando conexión con el servidor...</span>
+        </div>
+
+        <div class="steps">
+            <h3>📋 Cómo usar esta herramienta:</h3>
+            <ol>
+                <li><strong>Verifica</strong> que el servidor esté funcionando (indicador verde arriba)</li>
+                <li><strong>Ingresa la URL</strong> de la página web que quieres analizar</li>
+                <li><strong>Haz clic en "Generar con IA"</strong> y espera el análisis</li>
+                <li><strong>Descarga o copia</strong> tu archivo LLM.txt generado por IA</li>
+            </ol>
+        </div>
+
+        <div class="input-group">
+            <label for="url">🌐 URL de la página web:</label>
+            <input type="url" id="url" placeholder="https://ejemplo.com" required>
+        </div>
+        
+        <div class="btn-container">
+            <button type="button" class="btn" onclick="generateWithAI()" id="generateBtn">
+                🚀 Generar LLM.txt con IA
+            </button>
+        </div>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <span>La IA está analizando la página web...</span>
+        </div>
+
+        <div class="message error" id="error"></div>
+        <div class="message success" id="success"></div>
+        <div class="message info" id="info"></div>
+
+        <div class="result" id="result">
+            <h3>📄 Archivo LLM.txt generado por IA:</h3>
+            <textarea id="llmContent" readonly></textarea>
+            <div class="stats" id="stats" style="display: none;"></div>
+            <div class="btn-container">
+                <button class="btn btn-download" onclick="downloadLLM()">
+                    💾 Descargar LLM.txt
+                </button>
+                <button class="btn btn-copy" onclick="copyLLM()">
+                    📋 Copiar al portapapeles
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuración del servidor (ajustar según tu configuración)
+        const SERVER_URL = 'http://localhost:3000';
+        
+        // Función para mostrar mensajes
+        function showMsg(type, text) {
+            const errorEl = document.getElementById('error');
+            const successEl = document.getElementById('success');
+            const infoEl = document.getElementById('info');
+            
+            errorEl.style.display = 'none';
+            successEl.style.display = 'none';
+            infoEl.style.display = 'none';
+            
+            if (type === 'error') {
+                errorEl.textContent = text;
+                errorEl.style.display = 'block';
+            } else if (type === 'success') {
+                successEl.textContent = text;
+                successEl.style.display = 'block';
+            } else if (type === 'info') {
+                infoEl.textContent = text;
+                infoEl.style.display = 'block';
+            }
+            
+            setTimeout(() => {
+                errorEl.style.display = 'none';
+                successEl.style.display = 'none';
+                infoEl.style.display = 'none';
+            }, 8000);
+        }
+
+        // Función para verificar estado del servidor
+        async function checkServerStatus() {
+            const statusEl = document.getElementById('statusText');
+            const indicatorEl = document.getElementById('statusIndicator');
+            const containerEl = document.getElementById('serverStatus');
+            
+            try {
+                const response = await fetch(`${SERVER_URL}/api/health`);
+                const data = await response.json();
+                
+                if (data.status === 'OK') {
+                    statusEl.textContent = '✅ Servidor conectado y funcionando';
+                    indicatorEl.classList.remove('error');
+                    containerEl.classList.remove('error');
+                    
+                    // Verificar configuración
+                    const configResponse = await fetch(`${SERVER_URL}/api/config`);
+                    const configData = await configResponse.json();
+                    
+                    if (!configData.openai_configured) {
+                        statusEl.textContent = '⚠️ Servidor conectado pero OpenAI no configurado';
+                        showMsg('error', 'El servidor no tiene configurada la API Key de OpenAI');
+                    }
+                } else {
+                    throw new Error('Estado del servidor inválido');
+                }
+            } catch (error) {
+                statusEl.textContent = '❌ No se puede conectar al servidor';
+                indicatorEl.classList.add('error');
+                containerEl.classList.add('error');
+                showMsg('error', `Error de conexión: ${error.message}. Verifica que el servidor esté ejecutándose en ${SERVER_URL}`);
+            }
+        }
+
+        // Función para validar URL
+        function isValidUrl(string) {
+            try {
+                new URL(string);
+                return true;
+            } catch (_) {
+                return false;
+            }
+        }
+
+        // Función para mostrar/ocultar loading
+        function showLoading(show) {
+            const loading = document.getElementById('loading');
+            const btn = document.getElementById('generateBtn');
+            
+            if (show) {
+                loading.style.display = 'flex';
+                btn.disabled = true;
+                btn.textContent = '⏳ Procesando...';
+            } else {
+                loading.style.display = 'none';
+                btn.disabled = false;
+                btn.textContent = '🚀 Generar LLM.txt con IA';
+            }
+        }
+
+        // Función principal para generar con IA
+        async function generateWithAI() {
+            const url = document.getElementById('url').value.trim();
+            
+            // Validaciones
+            if (!url) {
+                showMsg('error', 'Por favor, ingresa una URL válida.');
+                return;
+            }
+            
+            if (!isValidUrl(url)) {
+                showMsg('error', 'La URL ingresada no es válida. Asegúrate de incluir http:// o https://');
+                return;
+            }
+
+            showLoading(true);
+            
+            try {
+                const response = await fetch(`${SERVER_URL}/api/generate-llm`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ url })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || `Error del servidor: ${response.status}`);
+                }
+
+                if (!data.success || !data.content) {
+                    throw new Error('Respuesta inválida del servidor');
+                }
+
+                // Mostrar resultado
+                document.getElementById('llmContent').value = data.content;
+                document.getElementById('result').style.display = 'block';
+                
+                // Mostrar estadísticas si están disponibles
+                if (data.tokens_used) {
+                    const statsEl = document.getElementById('stats');
+                    statsEl.innerHTML = `
+                        <strong>Estadísticas:</strong><br>
+                        • Tokens utilizados: ${data.tokens_used}<br>
+                        • Generado: ${new Date(data.generated_at).toLocaleString()}<br>
+                        • URL analizada: ${data.url}
+                    `;
+                    statsEl.style.display = 'block';
+                }
+                
+                document.getElementById('result').scrollIntoView({ behavior: 'smooth' });
+                showMsg('success', '¡LLM.txt generado exitosamente por la IA!');
+                
+            } catch (error) {
+                console.error('Error:', error);
+                showMsg('error', `Error al generar el LLM.txt: ${error.message}`);
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // Función para descargar archivo
+        function downloadLLM() {
+            const content = document.getElementById('llmContent').value;
+            if (!content) {
+                showMsg('error', 'No hay contenido para descargar');
+                return;
+            }
+
+            const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'llm.txt';
+            a.style.display = 'none';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            showMsg('success', 'Archivo LLM.txt descargado correctamente');
+        }
+
+        // Función para copiar al portapapeles
+        function copyLLM() {
+            const content = document.getElementById('llmContent').value;
+            if (!content) {
+                showMsg('error', 'No hay contenido para copiar');
+                return;
+            }
+
+            const textarea = document.getElementById('llmContent');
+            textarea.select();
+            textarea.setSelectionRange(0, 99999);
+
+            try {
+                document.execCommand('copy');
+                showMsg('success', 'Contenido copiado al portapapeles');
+            } catch (err) {
+                showMsg('error', 'No se pudo copiar al portapapeles');
+            }
+        }
+
+        // Event listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            // Verificar estado del servidor al cargar
+            checkServerStatus();
+            
+            // Permitir generar con Enter
+            const urlInput = document.getElementById('url');
+            urlInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    generateWithAI();
+                }
+            });
+            
+            // Verificar servidor cada 30 segundos
+            setInterval(checkServerStatus, 30000);
+        });
+    </script>
+</body>
+</html>
